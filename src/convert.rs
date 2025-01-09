@@ -26,7 +26,7 @@ fn wallet_to_base58() {
         .trim_start_matches("[")
         .trim_end_matches("]")
         .split(",")
-        .map(|s| s.trim().parse::<u8>().unwrap())
+        .map(|s: &str| s.trim().parse::<u8>().unwrap())
         .collect::<Vec<u8>>();
 
     println!("Your private key is:");

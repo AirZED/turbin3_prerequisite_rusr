@@ -1,13 +1,16 @@
 #[cfg(test)]
 mod convert;
+mod programs;
 mod tests {
+    use crate::programs::Turbin3_prereq::{CompleteArgs, Turbin3PrereqProgram, UpdateArgs};
     use solana_client::rpc_client::RpcClient;
     use solana_program::{pubkey::Pubkey, system_instruction::transfer};
     use solana_sdk::{
         message::Message,
         signature::{read_keypair_file, Keypair, Signer},
+        system_program,
         sysvar::recent_blockhashes,
-        transaction::Transaction,
+        transaction::{self, Transaction},
     };
     use std::str::FromStr;
 
@@ -42,6 +45,50 @@ mod tests {
             }
             Err(e) => println!("Oops, something went wrong: {:?}", e),
         }
+    }
+
+    #[test]
+    fn enroll() {
+        const RPC_URL: &str = "https://api.devnet.solana.com";
+
+        let rpc_client = RpcClient::new(RPC_URL);
+
+        let signer = read_keypair_file("Turbin3-wallet.json").expect("Couldn't find wallet file");
+
+        let prereq = Turbin3PrereqProgram::derive_program_address(&[
+            b"prereq",
+            signer.pubkey().to_bytes().as_ref(),
+        ]);
+
+        //    define our instruction data
+        let args = CompleteArgs {
+            github: b"AirZED".to_vec(),
+        };
+
+        // get recent blockhash
+        let blockhash = rpc_client
+            .get_latest_blockhash()
+            .expect("Failed to get blockhash");
+
+        // invoke the complete function
+        let transaction = Turbin3PrereqProgram::complete(
+            &[&signer.pubkey(), &prereq, &system_program::id()],
+            &args,
+            Some(&signer.pubkey()),
+            &[&signer],
+            blockhash,
+        );
+
+        // publish the transaction
+        let signature = rpc_client
+            .send_and_confirm_transaction(&transaction)
+            .expect("Failed to send transaction");
+
+        // printout the transaction
+        println!(
+            "SUccess! Check out your TX here: https://explorer.solana.com/tx/{:?}?cluster=devnet",
+            signature
+        );
     }
 
     #[test]
